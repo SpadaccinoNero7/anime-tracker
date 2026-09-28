@@ -787,8 +787,16 @@
   .ep-row .bar{flex:1 1 100%;margin:4px 0 0;}
   .score-row{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
   .score-row input[type=range]{flex:1 1 160px;accent-color:var(--accent);cursor:pointer;}
+  .score-row input[type=number]{
+    width:64px;text-align:center;background:var(--panel);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:4px;font-size:13.5px;font-family:inherit;height:26px;
+  }
+  .score-row input[type=number]:focus{outline:none;border-color:var(--accent);}
   .score-row .val{min-width:74px;font-weight:600;color:var(--accent);}
   .score-row .val.none{color:var(--muted);font-weight:400;}
+  .score-row .pill.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600;}
+  .smiley-picker{display:flex;gap:6px;}
+  .smiley-picker .pill{font-size:18px;padding:2px 10px;line-height:1;}
   .notes-box{margin-top:12px;}
   .notes-box textarea{
     width:100%;min-height:62px;resize:vertical;background:var(--panel);border:1px solid var(--border);color:var(--text);

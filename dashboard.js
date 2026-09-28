@@ -74,6 +74,10 @@ if (new URLSearchParams(location.hash.slice(1)).get('discord') === 'linked') {
 }
 window.addEventListener('hashchange', () => { takeAnimeHash(); if (SESSION_TOKEN) openPendingAnime(); });
 let SESSION_TOKEN = localStorage.getItem(SESSION_KEY) || '';
+// stile di voto scelto su AniList (mediaListOptions.scoreFormat): letto una volta al login (/score-format)
+// e tenuto in cache locale così l'interfaccia è già giusta anche prima che risponda il server.
+const SCORE_FORMAT_KEY = 'animeScoreFormat';
+let SCORE_FORMAT = localStorage.getItem(SCORE_FORMAT_KEY) || 'POINT_10_DECIMAL';
 let ACTIVE_TAB = 'library';
 let FIRST_LOAD = true;      // il primo caricamento parte dalla scheda scelta nelle impostazioni
 const CACHES = { anime: {}, manga: {} };   // una cache per modalità: passando da una all'altra non si ricarica tutto
@@ -520,6 +524,7 @@ async function init(){
       openPendingAnime();
       acceptPendingInvite();
       setTimeout(prefetchTabCounts, 1500);   // dopo la scheda iniziale: i numeri sulle altre liste
+      refreshScoreFormat();   // in background: se cambia non blocca l'avvio, si aggiorna al prossimo voto
     } else {
       handleUnauthenticated();
     }
@@ -536,6 +541,31 @@ function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<
 function escapeAttr(s){ return escapeHtml(s); }
 // voto personale: AniList lo dà in centesimi (POINT_100), qui si mostra su 10
 function fmtScore(s){ return (Math.round(s / 5) / 2).toLocaleString('it-IT'); }
+
+// Stile di voto scelto su AniList (mediaListOptions.scoreFormat): adatta SOLO il controllo con cui
+// l'utente assegna il proprio voto (renderMyList/scoreWidgetHtml), così l'esperienza è la stessa a cui
+// è abituato su AniList. Il resto della dashboard (statistiche, confronto con gli amici, filtri) resta
+// sempre su 10 con fmtScore: mescolare formati diversi tra utenti/contesti renderebbe i confronti confusi.
+const SCORE_FORMATS = {
+  POINT_100:        { max: 100, step: 1,   toDisplay: r => r,                        toRaw: v => Math.round(v) },
+  POINT_10_DECIMAL: { max: 10,  step: 0.1, toDisplay: r => Math.round(r) / 10,       toRaw: v => Math.round(v * 10) },
+  POINT_10:         { max: 10,  step: 1,   toDisplay: r => Math.round(r / 10),       toRaw: v => Math.round(v) * 10 },
+  POINT_5:          { max: 5,   step: 0.5, toDisplay: r => Math.round(r / 10) / 2,   toRaw: v => Math.round(v * 2) * 10 },
+  POINT_3:          { max: 3,   step: 1,   toDisplay: r => (r <= 0 ? 0 : r <= 45 ? 1 : r <= 70 ? 2 : 3), toRaw: v => [0, 35, 60, 100][v] || 0 },
+};
+function scoreFmt(){ return SCORE_FORMATS[SCORE_FORMAT] || SCORE_FORMATS.POINT_10_DECIMAL; }
+
+// Chiesto al server (non bloccante: se fallisce resta il formato di prima/quello di default)
+async function refreshScoreFormat(){
+  try {
+    const r = await api('/score-format');
+    if (r && r.scoreFormat && SCORE_FORMATS[r.scoreFormat] && r.scoreFormat !== SCORE_FORMAT){
+      SCORE_FORMAT = r.scoreFormat;
+      localStorage.setItem(SCORE_FORMAT_KEY, SCORE_FORMAT);
+      if (DETAIL) renderMyList();   // scheda già aperta: aggiorna subito il controllo del voto
+    }
+  } catch (e) { /* non critico */ }
+}
 
 function emptyState(msg, cta){
   return `<div class="empty-state">${escapeHtml(msg)}${cta ? `<div>${cta}</div>` : ''}</div>`;
@@ -2612,13 +2642,7 @@ function renderMyList(){
     </div>
     ${showEps ? (èManga ? rigaProgresso('Volumi letti', entry.progressVolumes || 0, m.volumes, m.volumes, 'volumes') : '')
       + rigaProgresso(W().seenUnits, entry.progress, cap, total, 'chapters') : ''}
-    <div class="score-row">
-      <span class="count">Il tuo voto</span>
-      <input type="range" id="myScore" min="0" max="10" step="0.5" value="${entry.score ? Math.round(entry.score / 5) / 2 : 0}"
-        oninput="scoreLabel(this.value)" onchange="detailScore(${id},this.value)" aria-label="Il tuo voto da 0 a 10">
-      <span class="val" id="myScoreVal"></span>
-      ${entry.score ? `<button class="pill" onclick="detailScore(${id},0)">Togli voto</button>` : ''}
-    </div>
+    ${scoreWidgetHtml(id, entry)}
     <div class="notes-box">
       <textarea id="myNotes" maxlength="2000" placeholder="Note personali (visibili solo a te e su AniList)…"
         onchange="detailNotes(${id},this.value)">${escapeHtml(entry.notes || '')}</textarea>
@@ -2626,24 +2650,71 @@ function renderMyList(){
     <div style="margin-top:14px;text-align:right;">
       <button class="pill danger" onclick="detailRemove(${id})">Rimuovi dalla lista</button>
     </div>`;
-  scoreLabel($('#myScore').value);
+  const scoreEl = $('#myScore');
+  if (scoreEl) scoreLabel(scoreEl.value);
+}
+
+// Il controllo con cui si assegna il voto: nell'aspetto scelto su AniList (numero su 100, slider su 10
+// intero o decimale, stelle o faccine). Internamente il voto resta sempre 0-100 (scoreRaw di AniList).
+function scoreWidgetHtml(id, entry){
+  const f = scoreFmt();
+  const raw = entry.score || 0;
+  const val = raw ? f.toDisplay(raw) : 0;
+  const clearBtn = raw ? `<button class="pill" onclick="detailScore(${id},0)">Togli voto</button>` : '';
+  if (SCORE_FORMAT === 'POINT_3'){
+    const opt = (v, icon, label) => `<button class="pill${val === v ? ' active' : ''}" onclick="detailScore(${id},${v})" aria-label="${label}">${icon}</button>`;
+    return `
+    <div class="score-row">
+      <span class="count">Il tuo voto</span>
+      <span class="smiley-picker">${opt(1, '🙁', 'Non mi è piaciuto')}${opt(2, '😐', 'Nella media')}${opt(3, '🙂', 'Mi è piaciuto')}</span>
+      ${clearBtn}
+    </div>`;
+  }
+  if (SCORE_FORMAT === 'POINT_100'){
+    return `
+    <div class="score-row">
+      <span class="count">Il tuo voto</span>
+      <input type="number" id="myScore" min="0" max="100" step="1" value="${val || ''}" placeholder="0-100"
+        onchange="detailScore(${id},this.value)" aria-label="Il tuo voto da 0 a 100">
+      ${clearBtn}
+    </div>`;
+  }
+  return `
+    <div class="score-row">
+      <span class="count">Il tuo voto</span>
+      <input type="range" id="myScore" min="0" max="${f.max}" step="${f.step}" value="${val}"
+        oninput="scoreLabel(this.value)" onchange="detailScore(${id},this.value)" aria-label="Il tuo voto da 0 a ${f.max}">
+      <span class="val" id="myScoreVal"></span>
+      ${clearBtn}
+    </div>`;
+}
+
+function scoreValueLabel(v){
+  if (!v) return 'nessun voto';
+  if (SCORE_FORMAT === 'POINT_5'){
+    const full = Math.floor(v), half = v % 1 !== 0;
+    return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(5 - full - (half ? 1 : 0));
+  }
+  if (SCORE_FORMAT === 'POINT_100') return `${v.toLocaleString('it-IT')} / 100`;
+  return `★ ${v.toLocaleString('it-IT')} / 10`;
 }
 
 function scoreLabel(v){
   const el = $('#myScoreVal');
   if (!el) return;
   v = Number(v);
-  el.textContent = v ? `★ ${v.toLocaleString('it-IT')} / 10` : 'nessun voto';
+  el.textContent = scoreValueLabel(v);
   el.classList.toggle('none', !v);
 }
 
 function detailScore(id, value){
   if (!DETAIL || DETAIL.id !== id || !DETAIL.entry) return;
-  const score = Math.round(Number(value) * 10) || 0;          // 0-10 -> 0-100, 0 = nessun voto
+  const v = Number(value) || 0;
+  const score = v ? scoreFmt().toRaw(v) : 0;
   if (score === (DETAIL.entry.score || 0)) return;
   applyLocal(id, Object.assign({}, DETAIL.entry, { score: score || null }));
   queueChange(id, { score });
-  showToast(score ? `Voto salvato: ${fmtScore(score)}/10` : 'Voto tolto.', 'ok');
+  showToast(score ? `Voto salvato: ${scoreValueLabel(v)}` : 'Voto tolto.', 'ok');
 }
 
 function detailNotes(id, value){
