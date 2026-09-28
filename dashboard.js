@@ -534,7 +534,7 @@ async function init(){
 }
 
 function coverImg(cover, title){
-  if (cover) return `<img class="cover" src="${escapeAttr(cover)}" alt="">`;
+  if (cover) return `<img class="cover" src="${escapeAttr(cover)}" alt="" loading="lazy" decoding="async">`;
   return `<div class="cover empty">${escapeHtml((title||'').slice(0,2).toUpperCase())}</div>`;
 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -595,7 +595,7 @@ function libraryCard(it){
   <div class="card" data-id="${it.id}" data-swipe="remove">
     <div class="swipe-bg swipe-bg-remove"><span>✕ Rimuovi</span></div>
     <div class="card-content">
-    <div class="cover-row clickable" onclick="openDetails(${it.id})">
+    <div class="cover-row clickable" role="button" tabindex="0" onclick="openDetails(${it.id})">
       ${coverImg(it.cover, animeTitle(it))}
       <div class="meta">
         <h3>${escapeHtml(animeTitle(it))}</h3>
@@ -785,7 +785,7 @@ function planningCard(it){
     <div class="card simple-card" data-id="${it.id}" data-swipe="remove">
       <div class="swipe-bg swipe-bg-remove"><span>✕ Rimuovi</span></div>
       <div class="card-content">
-      <div class="cover-row clickable" onclick="openDetails(${it.id})">
+      <div class="cover-row clickable" role="button" tabindex="0" onclick="openDetails(${it.id})">
         ${coverImg(it.cover, animeTitle(it))}
         <div class="meta">
           <h3>${escapeHtml(animeTitle(it))}</h3>
@@ -814,7 +814,7 @@ function simpleCard(it, opts){
     <div class="card simple-card" data-id="${it.id}" data-swipe="remove">
       <div class="swipe-bg swipe-bg-remove"><span>✕ Rimuovi</span></div>
       <div class="card-content">
-      <div class="cover-row clickable" onclick="openDetails(${it.id})">
+      <div class="cover-row clickable" role="button" tabindex="0" onclick="openDetails(${it.id})">
         ${coverImg(it.cover, animeTitle(it))}
         <div class="meta">
           <h3>${escapeHtml(animeTitle(it))}</h3>
@@ -949,7 +949,7 @@ function renderUpcoming(data){
   html += `<div class="panel-title">Disponibili ora</div>`;
   html += available.length
     ? available.map(it => `
-      <div class="upcoming-item clickable" onclick="openDetails(${it.id})">
+      <div class="upcoming-item clickable" role="button" tabindex="0" onclick="openDetails(${it.id})">
         <span class="live-dot"></span>
         ${coverImg(it.cover, animeTitle(it))}
         <div class="meta"><h3 style="font-size:13.5px;margin:0;">${escapeHtml(animeTitle(it))}</h3></div>
@@ -964,7 +964,7 @@ function renderUpcoming(data){
         const d = new Date(it.airingAt * 1000);
         const day = d.toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'short' });
         const time = d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
-        return `<div class="upcoming-item clickable" onclick="openDetails(${it.id})">
+        return `<div class="upcoming-item clickable" role="button" tabindex="0" onclick="openDetails(${it.id})">
           ${coverImg(it.cover, animeTitle(it))}
           <div class="meta"><h3 style="font-size:13.5px;margin:0;">${escapeHtml(animeTitle(it))}</h3>
           <div class="sub">Episodio ${it.episode}</div></div>
@@ -1105,7 +1105,7 @@ function wrappedCta(){
 const wrHours = min => Math.round(min / 60);
 const wrDate = d => new Date(d + 'T12:00:00Z').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', timeZone: 'UTC' });
 const WR_MONTHS = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
-function wrCover(x, cls = ''){ return x && x.cover ? `<img class="wr-cover ${cls}" src="${escapeAttr(x.cover)}" alt="">` : ''; }
+function wrCover(x, cls = ''){ return x && x.cover ? `<img class="wr-cover ${cls}" src="${escapeAttr(x.cover)}" alt="" loading="lazy" decoding="async">` : ''; }
 function wrappedSlides(d){
   const name = ($('#userName') && $('#userName').textContent) || '';
   const S = [];
@@ -1348,7 +1348,7 @@ function renderSearchResults(items){
     <div class="card simple-card"${it.inLibrary ? '' : ` data-id="${it.id}" data-swipe="add" data-not-released="${it.status === 'NOT_YET_RELEASED'}"`}>
       ${it.inLibrary ? '' : '<div class="swipe-bg swipe-bg-add"><span>✓ Aggiungi</span></div>'}
       <div class="card-content">
-      <div class="cover-row clickable" onclick="openDetails(${it.id})">
+      <div class="cover-row clickable" role="button" tabindex="0" onclick="openDetails(${it.id})">
         ${coverImg(it.cover, animeTitle(it))}
         <div class="meta">
           <h3>${escapeHtml(animeTitle(it))}</h3>
@@ -2929,6 +2929,14 @@ $('#detailBack').addEventListener('click', e => { if (e.target === $('#detailBac
 // senza controllo qui bloccherebbe l'avvio di tutta la pagina.
 if ($('#friendBack')) $('#friendBack').addEventListener('click', e => { if (e.target === $('#friendBack')) closeFriendProfile(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDetails(); closeFriendProfile(); closeSettings(); closeTabsSheet(); } });
+// Card e "chip" con onclick ma senza <button>: Invio/Spazio le attivano come farebbe un click, per chi naviga da tastiera.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target.closest('[role="button"]');
+  if (!el || el.tagName === 'BUTTON') return;
+  e.preventDefault();
+  el.click();
+});
 
 function renderDetails(m){
   const title = animeTitle(m);
@@ -3130,7 +3138,7 @@ async function unhideRec(id, btn){
 function recCard(it, canHide, whyHtml){
   return `
       <div class="card simple-card">
-        <div class="cover-row clickable" onclick="openDetails(${it.id})">
+        <div class="cover-row clickable" role="button" tabindex="0" onclick="openDetails(${it.id})">
           ${coverImg(it.cover, animeTitle(it))}
           <div class="meta">
             <h3>${escapeHtml(animeTitle(it))}</h3>
@@ -3199,15 +3207,15 @@ function newsTopics(it){
   return NEWS_TOPICS.filter(([, , test]) => tags.some(test)).map(([k]) => k);
 }
 function newsMatchChip(m){
-  return `<span class="news-match" onclick="openDetails(${m.id})" title="Apri la scheda">
-    ${m.cover ? `<img src="${escapeAttr(m.cover)}" alt="">` : ''}<span>${escapeHtml(animeTitle(m))}</span></span>`;
+  return `<span class="news-match" role="button" tabindex="0" onclick="openDetails(${m.id})" title="Apri la scheda">
+    ${m.cover ? `<img src="${escapeAttr(m.cover)}" alt="" loading="lazy" decoding="async">` : ''}<span>${escapeHtml(animeTitle(m))}</span></span>`;
 }
 function newsItem(it){
   const sec = it.pubDate ? Date.parse(it.pubDate) / 1000 : null;
   const matches = it.matches || [];
   return `<div class="news-item ${matches.length ? 'followed' : ''}">
     <a href="${escapeAttr(it.link)}" target="_blank" rel="noopener noreferrer">
-      ${it.image ? `<img class="news-thumb" src="${escapeAttr(it.image)}" alt="" onerror="this.style.display='none'">` : ''}
+      ${it.image ? `<img class="news-thumb" src="${escapeAttr(it.image)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
     </a>
     <div class="txt">
       <div class="news-head">
@@ -3537,7 +3545,7 @@ function renderGrouped(items, cardFn){
     const open = EXPANDED_GROUPS.has(key);
     return `
     <div class="card folder-card${open ? ' open' : ''}">
-      <div class="cover-row clickable" onclick="toggleGroup('${key}')">
+      <div class="cover-row clickable" role="button" tabindex="0" aria-expanded="${open}" onclick="toggleGroup('${key}')">
         <div class="folder-stack">${sorted.slice(0, 3).map(it => coverImg(it.cover, animeTitle(it))).join('')}</div>
         <div class="meta">
           <h3>${escapeHtml(animeTitle(sorted[0]))}</h3>
@@ -3894,7 +3902,7 @@ async function loadFriends(){
 }
 
 function friendAvatar(f){
-  return f.avatar ? `<img class="av" src="${escapeAttr(f.avatar)}" alt="">` : `<span class="av"></span>`;
+  return f.avatar ? `<img class="av" src="${escapeAttr(f.avatar)}" alt="" loading="lazy" decoding="async">` : `<span class="av"></span>`;
 }
 
 function friendStatusText(x){
@@ -4099,7 +4107,7 @@ function renderFriends(data){
   html += `<div class="panel-title">La tua lista "Da vedere", secondo gli amici</div>`;
   html += plan.length ? `<div class="grid">${plan.map(({ it, fr: list }) => `
     <div class="card simple-card">
-      <div class="cover-row clickable" onclick="openDetails(${it.id})">
+      <div class="cover-row clickable" role="button" tabindex="0" onclick="openDetails(${it.id})">
         ${coverImg(it.cover, animeTitle(it))}
         <div class="meta">
           <h3>${escapeHtml(animeTitle(it))}</h3>
@@ -4151,7 +4159,7 @@ async function loadAdminUsers(){
     </form>
     <div class="adm-list">${users.map(u => `
       <div class="adm-row${u.allowed ? '' : ' off'}">
-        ${u.avatar ? `<img class="av" src="${escapeAttr(u.avatar)}" alt="">` : '<span class="av"></span>'}
+        ${u.avatar ? `<img class="av" src="${escapeAttr(u.avatar)}" alt="" loading="lazy" decoding="async">` : '<span class="av"></span>'}
         <div class="adm-main">
           <div class="n">${escapeHtml(u.display || u.name)}${u.admin ? ' 👑' : ''}</div>
           <div class="adm-badges">

@@ -38,17 +38,18 @@ try{
     </div>
     <div class="header-search" id="headerSearch" style="display:none">
       <span class="ico">⌕</span>
-      <input id="searchInput" type="search" placeholder="Cerca un anime… (# per tag e generi)" autocomplete="off" enterkeyhint="search">
-      <button id="searchClear" title="Cancella" type="button">×</button>
+      <input id="searchInput" type="search" placeholder="Cerca un anime… (# per tag e generi)" autocomplete="off" enterkeyhint="search" aria-label="Cerca un anime. Usa # per filtrare per tag e generi">
+      <button id="searchClear" title="Cancella" aria-label="Cancella ricerca" type="button">×</button>
+      <span class="search-hint" tabindex="0" title="Scrivi # seguito da un tag o un genere per filtrare la libreria (es. #isekai)" aria-label="Suggerimento: scrivi # seguito da un tag o un genere per filtrare la libreria">?</span>
     </div>
     <div style="display:flex;align-items:center;">
       <div class="user-badge" id="userBadge" style="display:none">
         <img id="userAvatar" alt="">
         <span id="userName"></span>
-        <button id="logoutBtn" title="Esci">⏻</button>
+        <button id="logoutBtn" title="Esci" aria-label="Esci dall'account">⏻</button>
       </div>
-      <button class="icon-btn" id="themeBtn" title="Cambia tema" type="button"></button>
-      <button class="icon-btn" id="settingsBtn" title="Impostazioni" type="button">⚙</button>
+      <button class="icon-btn" id="themeBtn" title="Cambia tema" aria-label="Cambia tema chiaro/scuro" type="button"></button>
+      <button class="icon-btn" id="settingsBtn" title="Impostazioni" aria-label="Apri impostazioni" type="button">⚙</button>
     </div>
   </header>
 

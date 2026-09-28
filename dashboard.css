@@ -53,6 +53,8 @@
   ::selection{background:var(--accent);color:var(--accent-ink);}
   button{font-family:inherit;}
   a{color:var(--accent);}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+  .clickable:focus-visible{outline-offset:0;}
 
   .app{
     max-width:none;margin:0 auto;padding:0 28px;
@@ -321,6 +323,13 @@
   }
   .header-search button:hover{color:var(--text);}
   .header-search.has-text button{display:block;}
+  .header-search .search-hint{
+    position:absolute;right:6px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;
+    background:var(--panel-2);color:var(--muted);cursor:help;font-size:12px;line-height:20px;text-align:center;
+    display:block;user-select:none;
+  }
+  .header-search .search-hint:hover,.header-search .search-hint:focus-visible{color:var(--text);}
+  .header-search.has-text .search-hint{display:none;}
   @media (max-width:640px){
     header.top{flex-wrap:wrap;}
     .header-search{order:3;flex-basis:100%;max-width:none;}
