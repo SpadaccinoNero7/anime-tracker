@@ -195,7 +195,7 @@ I workflow personali (bot + notifiche col tuo account) restano separati in `WORK
 | `WORKFLOWS/add_prefs_endpoints.py` | `GET/POST /prefs` sul workflow API: preferenze dell'utente, validate lato server. |
 | Dashboard | Pannello preferenze nella scheda Telegram; il link `…/anime/#anime=<id>` apre la scheda dell'anime (anche dopo il login). |
 
-**Prova → tutti:** in `build_notifiche_v2.py` svuotare `SOLO_UTENTI`, rigenerare e reimportare; in `dashboard.html` mettere `NOTIF_V2_TEST = false`; disattivare "Notifica nuovi episodi (amici)" e far puntare il `/controlla` del bot a `amiciNotifiche02`.
+**Stato: pronto per tutti lato codice, resta il deploy su n8n.** `SOLO_UTENTI`/`SOLO_MANGA` sono già vuoti in `build_notifiche_v2.py` e `NOTIF_V2_TEST = false` in `dashboard.js` (pannello preferenze già visibile a tutti). `build_amici.py` è stato corretto per far puntare il comando `/controlla` del bot al workflow v2 (`amiciNotifiche02`) invece che al legacy `amiciNotifiche01` — prima il generatore usava lo stesso id per entrambi gli scopi, rischiando di regredire silenziosamente al vecchio workflow ad ogni rigenerazione. Passi rimasti, solo su n8n: importare e **attivare** `Notifiche anime v2 (amici).json`; **disattivare** il vecchio "Notifica nuovi episodi (amici)" (`amiciNotifiche01`) per evitare doppie notifiche; reimportare `Bot Anime Amici.json` aggiornato.
 
 Preferenze predefinite: tutto attivo, riepilogo alle 9, silenzio 23→8 (ora italiana).
 
@@ -206,11 +206,23 @@ Preferenze predefinite: tutto attivo, riepilogo alle 9, silenzio 23→8 (ora ita
 - Preferenza `manga` (default attiva), con l'interruttore nella dashboard.
 - Limiti: MangaUpdates registra anche le scanlation, quindi il capitolo può arrivare prima dell'uscita ufficiale in italiano; le uscite registrate con una data più vecchia di un giorno rispetto al cursore non vengono viste.
 
+## Crunchyroll auto-sync (per tutti)
+
+| Pezzo | Cosa fa |
+|---|---|
+| `WORKFLOWS/AMICI/Crunchyroll (amici).json` (generato da `build_crunchyroll.py`) | Collegamento via device-code (`crunchyroll.com/activate`), scelta profilo per account condivisi; ogni 10 minuti legge la cronologia visione di ogni utente collegato, abbina le stagioni Crunchyroll ad AniList (mappa in cache + euristica su titolo/anno) e aggiorna in automatico il progresso, con conferma via Telegram. Import dello storico pregresso con anteprima e conferma manuale delle stagioni "dubbie". |
+| Data Table `anime_cr_utenti` | Collegamento per utente: `stato` (linked/error), `refreshToken`, `profileId`, `seen`, `since`, `errore`. |
+| Dashboard | Scheda Collegamenti: link/scollega, scelta profilo, wizard di import storico. |
+
+**Stato: pronto per tutti.** `SOLO_UTENTI` è vuoto in `build_crunchyroll.py` e `CR_TEST = false` in `dashboard.js` (funzione già visibile a tutti, non solo admin). Aggiunta una pausa (~400ms) tra un utente e il successivo nel giro di sincronizzazione, per non mandare all'API Crunchyroll (non ufficiale) più richieste quasi simultanee quando il gruppo cresce.
+
+**Limiti noti da comunicare al gruppo:** usa un'API Crunchyroll non ufficiale, che può cambiare senza preavviso — un'interruzione impatta tutti gli utenti collegati insieme; in caso di cambio password o "esci da tutti i dispositivi" su Crunchyroll, il collegamento va rifatto a mano dalla dashboard; l'abbinamento automatico delle stagioni è euristico e a volte segnala "non so a quale serie corrisponde", senza modificare nulla, in attesa di un abbinamento manuale.
+
 ## Discord (in costruzione)
 
-Bozza completa in quattro fasi: collegamento/login, canale condiviso (#attività, #news, #uscite), notifiche nel canale #notifiche solo per chi le attiva, bot con slash command. Per ora è pronta la **Fase 1**, non ancora deployata.
+Bozza completa in quattro fasi: collegamento/login, canale condiviso (#attività, #news, #uscite), notifiche nel canale #notifiche solo per chi le attiva, bot con slash command. **Stato: codice completo per tutte le fasi (0-4), Fase 0 e Fase 1 già deployate; Fasi 2-4 pronte, restano da importare e attivare su n8n** (vedi i passi di ciascuna fase più sotto).
 
-**Da fare a mano una volta (Fase 0):** creare il server con i canali `#annunci`, `#attività`, `#news`, `#uscite`, `#notifiche`, `#bot` e il ruolo **Notifiche** (l'unico che vede `#notifiche`); sul [Discord Developer Portal](https://discord.com/developers/applications) creare un'Application, aggiungere il redirect OAuth `https://homelab.tailec9b6a.ts.net/webhook/anime-dashboard/discord/callback`, creare il bot e invitarlo nel server (Send Messages, Embed Links, Manage Roles, Create Instant Invite; il ruolo del bot deve stare **sopra** il ruolo Notifiche). Env sul container n8n: `DISCORD_APP_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `DISCORD_ROLE_NOTIFICHE` (le fasi successive aggiungeranno `DISCORD_PUBLIC_KEY` e gli id dei canali), poi restart.
+**Da fare a mano una volta (Fase 0):** creare il server con i canali `#annunci`, `#attività`, `#news`, `#uscite`, `#notifiche`, `#bot` e il ruolo **Notifiche** (l'unico che vede `#notifiche`); sul [Discord Developer Portal](https://discord.com/developers/applications) creare un'Application, aggiungere il redirect OAuth `https://homelab.tailec9b6a.ts.net/webhook/anime-dashboard/discord/callback`, creare il bot e invitarlo nel server (Send Messages, Embed Links, Manage Roles, Create Instant Invite; il ruolo del bot deve stare **sopra** il ruolo Notifiche). Env sul container n8n: `DISCORD_APP_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `DISCORD_ROLE_NOTIFICHE` (le fasi successive aggiungeranno gli id dei canali: `DISCORD_CH_ATTIVITA`, `DISCORD_CH_NEWS`, `DISCORD_CH_USCITE`, `DISCORD_CH_ANNUNCI`, `DISCORD_CH_ADMIN`), poi restart. **Nota:** `DISCORD_PUBLIC_KEY` non va impostata come env — la chiave di verifica Ed25519 è incorporata direttamente nel codice generato da `build_discord_bot.py` (`PUBLIC_KEY`, non un segreto), non letta da `$env`.
 
 **Fase 1 — `python WORKFLOWS/AMICI/add_discord_link.py <workflow amici.json>`** (idempotente). Data Table nuova `anime_discord_utenti` (`anilistId`, `discordId`, `discordName`, `linkCode`, `shareActivity`, `notifiche`; creata da sola, `anime_utenti` non si tocca).
 
