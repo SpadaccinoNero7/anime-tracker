@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Libreria Anime</title>
+<script>
+try{
+  var t = localStorage.getItem('animeDashboardTheme');
+  if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+}catch(e){}
+</script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍥</text></svg>">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1115">
+<!-- iOS non legge il manifest per l'icona/il comportamento da app: servono questi tag a parte -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Anime">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="dot"></span>
+      <h1>Libreria Anime</h1>
+      <div class="mode-switch" id="modeSwitch" role="group" aria-label="Anime o manga" style="display:none">
+        <button type="button" data-mode="anime" class="active" onclick="setMode('anime')">Anime</button>
+        <button type="button" data-mode="manga" onclick="setMode('manga')">Manga</button>
+      </div>
+      <span id="headerSub"></span>
+    </div>
+    <div class="header-search" id="headerSearch" style="display:none">
+      <span class="ico">⌕</span>
+      <input id="searchInput" type="search" placeholder="Cerca un anime… (# per tag e generi)" autocomplete="off" enterkeyhint="search">
+      <button id="searchClear" title="Cancella" type="button">×</button>
+    </div>
+    <div style="display:flex;align-items:center;">
+      <div class="user-badge" id="userBadge" style="display:none">
+        <img id="userAvatar" alt="">
+        <span id="userName"></span>
+        <button id="logoutBtn" title="Esci">⏻</button>
+      </div>
+      <button class="icon-btn" id="themeBtn" title="Cambia tema" type="button"></button>
+      <button class="icon-btn" id="settingsBtn" title="Impostazioni" type="button">⚙</button>
+    </div>
+  </header>
+
+  <div class="app-body" id="appBody">
+    <section class="login-gate" id="loginGate" style="display:none">
+      <h2>Libreria Anime</h2>
+      <p id="loginGateMsg">Accedi con il tuo account AniList per vedere e gestire la tua libreria.</p>
+      <button class="btn" id="loginBtn">Accedi con AniList</button>
+      <button class="btn secondary" id="discordLoginBtn" title="Solo se hai già collegato Discord dalla scheda Collegamenti">Accedi con Discord</button>
+    </section>
+
+    <nav class="tabs" id="tabs">
+      <div class="tabs-primary">
+        <button data-tab="library" class="active">In corso</button>
+        <button data-tab="planning">Da vedere</button>
+        <button data-tab="recs">Per te</button>
+        <button data-tab="stats">Statistiche</button>
+      </div>
+      <button type="button" class="tabs-more-toggle" id="tabsMoreToggle" aria-haspopup="true" aria-expanded="false">
+        <span>Altro</span><span class="chevron">▴</span>
+      </button>
+      <div class="tabs-more" id="tabsMore">
+        <button data-tab="upcoming">In uscita</button>
+        <button data-tab="seasonal">Classifiche</button>
+        <button data-tab="news">News</button>
+        <button data-tab="friends">Amici</button>
+        <button data-tab="paused">In pausa</button>
+        <button data-tab="dropped">Droppati</button>
+        <button data-tab="completed">Completati</button>
+        <button data-tab="telegram">Collegamenti</button>
+      </div>
+    </nav>
+    <div class="tabs-sheet-backdrop" id="tabsSheetBackdrop"></div>
+
+    <main id="content"></main>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="sync-badge" id="syncBadge"></div>
+
+<div class="modal-back" id="modalBack">
+  <div class="modal settings">
+    <h2>Impostazioni</h2>
+    <p class="hint">Valgono solo su questo browser e hanno effetto subito.</p>
+
+    <div class="set-group">
+      <h3>Aspetto</h3>
+      <div class="pref-row">
+        <label for="setTheme">Tema<small>“Automatico” segue il tema del telefono o del computer.</small></label>
+        <select id="setTheme">
+          <option value="auto">Automatico</option>
+          <option value="light">Chiaro</option>
+          <option value="dark">Scuro</option>
+        </select>
+      </div>
+      <div class="pref-row">
+        <label for="setTitleLang">Lingua dei titoli<small>Come vengono scritti i nomi delle serie.</small></label>
+        <select id="setTitleLang">
+          <option value="english">Inglese</option>
+          <option value="romaji">Giapponese (romaji)</option>
+          <option value="native">Originale (日本語)</option>
+        </select>
+      </div>
+      <div class="pref-row">
+        <input type="checkbox" id="setGroup">
+        <label for="setGroup">Raggruppa le stagioni<small>Le stagioni della stessa serie stanno in un’unica cartella.</small></label>
+      </div>
+      <div class="pref-row">
+        <label for="setPageSize">Serie per pagina<small>Quante ne mostra una lista prima di spezzarsi in pagine.</small></label>
+        <select id="setPageSize">
+          <option value="15">15</option>
+          <option value="30">30</option>
+          <option value="60">60</option>
+          <option value="0">Tutte</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="set-group" id="setMangaGroup" style="display:none">
+      <h3>Manga</h3>
+      <div class="pref-row">
+        <input type="checkbox" id="setVolumeChapters">
+        <label for="setVolumeChapters">Segna anche i capitoli<small>I capitoli seguono i volumi: salgono quando ne aggiungi uno, scendono quando lo togli. È una stima, perché AniList non dice quanti capitoli contiene ogni volume.</small></label>
+      </div>
+    </div>
+
+    <div class="set-group" id="setNewsGroup">
+      <h3>News</h3>
+      <div class="pref-row">
+        <input type="checkbox" id="setShowYen">
+        <label for="setShowYen">Andamento dello yen<small>Il riquadro con il cambio euro-yen e Miku in cima alla scheda News.</small></label>
+      </div>
+    </div>
+
+    <div class="set-group">
+      <h3>Schede</h3>
+      <div class="pref-row">
+        <label for="setStartTab">Scheda iniziale<small>Quella che si apre appena entri.</small></label>
+        <select id="setStartTab"></select>
+      </div>
+      <p class="hint">Togli la spunta alle schede che non usi: spariscono dalla barra in alto.</p>
+      <div class="tab-toggles" id="setTabList"></div>
+    </div>
+
+    <details class="set-group advanced" id="setAdvanced" style="display:none">
+      <summary>Avanzate</summary>
+      <p class="hint">Indirizzo del workflow n8n "API Dashboard Anime" e la chiave usata per proteggerlo.</p>
+      <div class="field">
+        <label>URL base delle webhook</label>
+        <input id="cfgBaseUrl" placeholder="https://n8n.tuodominio.it/webhook/anime-dashboard">
+      </div>
+      <div class="field">
+        <label>Nome header di autenticazione</label>
+        <input id="cfgHeaderName" placeholder="X-Api-Key">
+      </div>
+      <div class="field">
+        <label>Valore chiave</label>
+        <input id="cfgApiKey" placeholder="la tua chiave segreta" type="password">
+      </div>
+      <div class="field">
+        <label>AniList Client ID</label>
+        <input id="cfgClientId" placeholder="es. 12345">
+      </div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="cfgTest">Verifica connessione</button>
+        <button class="btn" id="cfgSave">Salva e ricarica</button>
+      </div>
+    </details>
+
+    <div class="modal-actions">
+      <button class="btn secondary" id="setReset">Ripristina</button>
+      <button class="btn" id="setClose">Fatto</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back" id="friendBack">
+  <div class="modal detail" id="friendBox"></div>
+</div>
+
+<div class="modal-back" id="detailBack">
+  <div class="modal detail" id="detailBox"></div>
+</div>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

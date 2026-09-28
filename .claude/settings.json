@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh root@homelab:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(tailscale:*)",
+      "Bash(sed:*)",
+      "Bash(md5sum:*)",
+      "WebFetch"
+    ]
+  }
+}
