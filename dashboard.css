@@ -169,6 +169,9 @@
       align-self:start;
     }
     .tabs-primary,.tabs-more{display:contents;}
+    /* display:contents toglie il box ma non l'ereditarietà: senza questo i pulsanti dentro
+       .tabs-more restano con pointer-events:none (ereditato) e non rispondono al click. */
+    .tabs-more{pointer-events:auto;}
     .tabs-more-toggle,.tabs-sheet-backdrop{display:none;}
     nav.tabs button{
       flex:none;height:auto;text-align:left;border-radius:10px;padding:10px 16px;
