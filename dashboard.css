@@ -585,7 +585,6 @@
   .modal.settings{max-width:470px;max-height:86vh;overflow-y:auto;}
   .modal.settings > p.hint{margin-bottom:6px;}
   .set-group{border-top:1px solid var(--border);margin-top:10px;padding-top:4px;}
-  .set-group h3{font-family:var(--font-display);font-size:14px;font-weight:600;margin:12px 0 2px;}
   .set-group p.hint{font-size:12.5px;color:var(--muted);margin:10px 0 6px;line-height:1.5;}
   /* su schermo stretto il menu a tendina va a capo invece di far debordare la modale */
   .set-group .pref-row{flex-wrap:wrap;}
@@ -599,16 +598,37 @@
   }
   .tab-toggle input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0;}
   .tab-toggle:has(input:checked){color:var(--text);border-color:var(--border-strong);}
-  .set-group.advanced summary{
-    cursor:pointer;font-family:var(--font-display);font-size:14px;font-weight:600;color:var(--muted);
+  .set-group summary{
+    cursor:pointer;font-family:var(--font-display);font-size:14px;font-weight:600;color:var(--text);
     padding:10px 0 4px;list-style:none;
   }
-  .set-group.advanced summary::-webkit-details-marker{display:none;}
-  .set-group.advanced summary::before{content:'\25B8  ';}
-  .set-group.advanced[open] summary::before{content:'\25BE  ';}
-  .set-group.advanced summary:hover{color:var(--text);}
+  .set-group.advanced summary{color:var(--muted);}
+  .set-group summary::-webkit-details-marker{display:none;}
+  .set-group summary::before{content:'\25B8  ';}
+  .set-group[open] summary::before{content:'\25BE  ';}
+  .set-group summary:hover{color:var(--text);}
 
   .loading{color:var(--muted);font-size:13.5px;padding:20px 0;}
+
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+
+  /* skeleton: placeholder animato mostrato mentre una scheda carica, al posto del testo "Carico…" */
+  @keyframes skel-sweep{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+  .skel-block{
+    border-radius:5px;background:linear-gradient(90deg, var(--panel-2) 25%, var(--border-strong) 37%, var(--panel-2) 63%);
+    background-size:400% 100%;animation:skel-sweep 1.4s ease-in-out infinite;
+  }
+  .skel-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .skel-card .cover-row{display:flex;gap:12px;padding:12px;}
+  .skel-cover{width:56px;height:80px;flex:0 0 auto;}
+  .skel-meta{flex:1;min-width:0;padding-top:4px;}
+  .skel-line{height:10px;margin-bottom:8px;}
+  .skel-line.w60{width:60%;}
+  .skel-line.w40{width:40%;}
+  .skel-bar{height:5px;margin:0 12px 12px;}
+  @media (prefers-reduced-motion: reduce){
+    .skel-block{animation:none;}
+  }
 
   .clickable{cursor:pointer;}
   .clickable:hover h3{color:var(--accent);}

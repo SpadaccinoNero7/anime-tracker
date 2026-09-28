@@ -96,8 +96,8 @@ try{
     <h2>Impostazioni</h2>
     <p class="hint">Valgono solo su questo browser e hanno effetto subito.</p>
 
-    <div class="set-group">
-      <h3>Aspetto</h3>
+    <details class="set-group" open>
+      <summary>Aspetto</summary>
       <div class="pref-row">
         <label for="setTheme">Tema<small>“Automatico” segue il tema del telefono o del computer.</small></label>
         <select id="setTheme">
@@ -127,33 +127,33 @@ try{
           <option value="0">Tutte</option>
         </select>
       </div>
-    </div>
+    </details>
 
-    <div class="set-group" id="setMangaGroup" style="display:none">
-      <h3>Manga</h3>
+    <details class="set-group" id="setMangaGroup" style="display:none">
+      <summary>Manga</summary>
       <div class="pref-row">
         <input type="checkbox" id="setVolumeChapters">
         <label for="setVolumeChapters">Segna anche i capitoli<small>I capitoli seguono i volumi: salgono quando ne aggiungi uno, scendono quando lo togli. È una stima, perché AniList non dice quanti capitoli contiene ogni volume.</small></label>
       </div>
-    </div>
+    </details>
 
-    <div class="set-group" id="setNewsGroup">
-      <h3>News</h3>
+    <details class="set-group" id="setNewsGroup">
+      <summary>News</summary>
       <div class="pref-row">
         <input type="checkbox" id="setShowYen">
         <label for="setShowYen">Andamento dello yen<small>Il riquadro con il cambio euro-yen e Miku in cima alla scheda News.</small></label>
       </div>
-    </div>
+    </details>
 
-    <div class="set-group">
-      <h3>Schede</h3>
+    <details class="set-group">
+      <summary>Schede</summary>
       <div class="pref-row">
         <label for="setStartTab">Scheda iniziale<small>Quella che si apre appena entri.</small></label>
         <select id="setStartTab"></select>
       </div>
       <p class="hint">Togli la spunta alle schede che non usi: spariscono dalla barra in alto.</p>
       <div class="tab-toggles" id="setTabList"></div>
-    </div>
+    </details>
 
     <details class="set-group advanced" id="setAdvanced" style="display:none">
       <summary>Avanzate</summary>

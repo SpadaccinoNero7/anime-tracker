@@ -571,6 +571,22 @@ function emptyState(msg, cta){
   return `<div class="empty-state">${escapeHtml(msg)}${cta ? `<div>${cta}</div>` : ''}</div>`;
 }
 
+// placeholder animato mostrato mentre una scheda carica, al posto di un testo "Carico…" a schermo vuoto
+function skeletonGrid(n = 8){
+  const card = `
+    <div class="skel-card">
+      <div class="cover-row">
+        <div class="skel-block skel-cover"></div>
+        <div class="skel-meta">
+          <div class="skel-block skel-line w60"></div>
+          <div class="skel-block skel-line w40"></div>
+        </div>
+      </div>
+      <div class="skel-block skel-bar"></div>
+    </div>`;
+  return `<div class="grid" aria-hidden="true">${card.repeat(n)}</div><span class="sr-only" role="status">Caricamento…</span>`;
+}
+
 // ---------- Tab: In corso (library) ----------
 function renderLibrary(items){
   if (!CONFIG.baseUrl) return emptyState('Configura l\'indirizzo delle API per iniziare.', '<button class="btn" onclick="openSettings(true)">Apri impostazioni</button>');
@@ -4125,9 +4141,9 @@ function renderFriends(data){
     const t = animeTitle(a.media);
     const verb = ACTIVITY_IT[a.status] || a.status;
     const ep = a.progress && /episode/.test(a.status) ? ` l'episodio ${escapeHtml(String(a.progress).replace(' - ', '–'))} di` : '';
-    const open = f.id ? ` onclick="event.stopPropagation(); openFriendProfile(${f.id})"` : '';
+    const open = f.id ? ` role="button" tabindex="0" onclick="event.stopPropagation(); openFriendProfile(${f.id})"` : '';
     // tutto su una riga di testo (niente pulsanti dentro la frase): nome, verbo e titolo restano allineati
-    return `<div class="feed-item" onclick="openDetails(${a.media.id})">
+    return `<div class="feed-item" role="button" tabindex="0" onclick="openDetails(${a.media.id})">
       <span class="feed-av"${open}>${friendAvatar(f)}</span>
       <div class="txt"><span class="who"${open}>${escapeHtml(f.name)}</span> ${escapeHtml(verb)}${ep} <b>${escapeHtml(t)}</b>
         <span class="when">${relTime(a.createdAt)}</span></div>
@@ -4253,7 +4269,7 @@ function renderReceivedRecs(recs){
     const m = recs.media[r.mediaId] || { id: r.mediaId, title: {} };
     const t = animeTitle(m) || 'Serie';
     const e = mine[r.mediaId];
-    return `<div class="rec-item" onclick="openDetails(${r.mediaId})">
+    return `<div class="rec-item" role="button" tabindex="0" onclick="openDetails(${r.mediaId})">
       ${coverImg(m.coverImage && m.coverImage.medium, t)}
       <div class="txt">
         <div class="t">${escapeHtml(t)}</div>
@@ -4365,7 +4381,7 @@ function renderSeasonal(){
   const years = []; for (let y = SEASONAL_YEAR_MAX; y >= SEASONAL_YEAR_MIN; y--) years.push(y);
   const opt = (val, text, cur) => `<option value="${escapeAttr(String(val))}" ${String(cur) === String(val) ? 'selected' : ''}>${escapeHtml(String(text))}</option>`;
   const sorts = SEASONAL_SORTS.map(([k, l]) => `<button class="chip ${v.sort === k ? 'active' : ''}" onclick="setSeasonalSort('${k}')">${l}</button>`).join('');
-  const body = v.loading && !v.items.length ? '<div class="loading">Carico…</div>'
+  const body = v.loading && !v.items.length ? skeletonGrid()
     : v.error ? emptyState('Errore nel caricamento: ' + v.error)
     : v.items.length ? renderSearchResults(v.items)
     : emptyState('Nessun risultato.');
@@ -4476,7 +4492,7 @@ async function loadTab(tab, force=false, silent=false){
   if (!CONFIG.baseUrl){ cache[tab] = null; renderTab(); return; }
   // il link di collegamento cambia a ogni richiesta: la scheda Telegram non usa la cache
   if (cache[tab] && !force && tab !== 'telegram'){ renderTab(); return; }
-  if (!silent) $('#content').innerHTML = '<div class="loading">Carico…</div>';
+  if (!silent) $('#content').innerHTML = skeletonGrid();
   try{
     if (hasPending()) await flushAll();            // prima salva, poi rileggi (altrimenti dati vecchi)
     const data = tab === 'recs' ? await loadRecs() : tab === 'telegram' ? await loadTelegram()
