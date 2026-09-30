@@ -3493,7 +3493,7 @@ function resetListView(tab){ LIST_VIEW[tab] = {}; setListView(tab, 'sort', LIST_
 // Le "cartelle" uniscono le stagioni di una stessa serie usando le relazioni prequel/sequel di AniList,
 // così in liste come "Completati" non ci si perde tra dieci righe della stessa serie.
 const RELATIONS_QUERY = `query($ids:[Int]){ Page(perPage:50){ media(id_in:$ids){ id relations{edges{relationType node{id type}}} } } }`;
-const RELATIONS_CACHE = {};             // mediaId -> id delle stagioni collegate (solo prequel/sequel, tipo anime)
+const RELATIONS_CACHE = {};             // mediaId -> [{ id, t }] legami stagione (anime/manga come la lista), t = tipo di relazione
 let relationsFetch = Promise.resolve();
 
 // PREQUEL/SEQUEL = stagioni vere e proprie; SIDE_STORY/PARENT = storie parallele nello stesso franchise
@@ -3503,7 +3503,7 @@ const SEASON_RELATION_TYPES = new Set(['PREQUEL', 'SEQUEL', 'SIDE_STORY', 'PAREN
 function seasonLinks(m){
   return ((m.relations && m.relations.edges) || [])
     .filter(e => SEASON_RELATION_TYPES.has(e.relationType) && e.node && e.node.type === mediaType())
-    .map(e => e.node.id);
+    .map(e => ({ id: e.node.id, t: e.relationType }));
 }
 
 // scarica le relazioni mancanti (in blocchi da 50) e le mette in cache; non fallisce mai:
@@ -3521,27 +3521,61 @@ async function fetchRelations(ids){
   }
 }
 
+// Scarica anche le stagioni "di passaggio" che non sono in lista (es. la S2 mai vista tra S1 e S3),
+// altrimenti la catena prequel/sequel si spezza e S1 e S3 finiscono in cartelle diverse.
+// Si segue solo PREQUEL/SEQUEL, per non allargarsi a mezzo franchise; massimo 6 salti.
+async function fetchRelationsDeep(ids){
+  let frontier = ids;
+  for (let hop = 0; hop < 6 && frontier.length; hop++){
+    await fetchRelations(frontier);
+    const next = new Set();
+    frontier.forEach(id => (RELATIONS_CACHE[id] || []).forEach(l => {
+      if ((l.t === 'PREQUEL' || l.t === 'SEQUEL') && !(l.id in RELATIONS_CACHE)) next.add(l.id);
+    }));
+    frontier = [...next];
+  }
+}
+
 // una volta arrivate le relazioni mancanti, ridisegna la scheda (se è ancora quella aperta)
 function ensureRelationsFor(tab, items){
   const ids = items.map(it => it.id);
   if (ids.every(id => id in RELATIONS_CACHE)) return;
-  relationsFetch = relationsFetch.then(() => fetchRelations(ids)).then(() => {
+  relationsFetch = relationsFetch.then(() => fetchRelationsDeep(ids)).then(() => {
     if (ACTIVE_TAB === tab && cache[tab]) renderListBody(tab);
   });
 }
 
-// unione per insiemi: raggruppa gli item della lista collegati tra loro da prequel/sequel
+// unione per insiemi su tutto il grafo noto (anche i nodi fuori lista fanno da ponte);
+// restituisce i gruppi di item della lista, nell'ordine della lista
 function franchiseGroups(items){
-  const idSet = new Set(items.map(it => it.id));
   const parent = {};
-  const find = x => (parent[x] === x ? x : (parent[x] = find(parent[x])));
+  const find = x => (parent[x] === undefined ? x : parent[x] === x ? x : (parent[x] = find(parent[x])));
   const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
-  items.forEach(it => { parent[it.id] = it.id; });
-  items.forEach(it => (RELATIONS_CACHE[it.id] || []).forEach(id => { if (idSet.has(id)) union(it.id, id); }));
+  Object.keys(RELATIONS_CACHE).forEach(k => { parent[k] = Number(k); });
+  Object.keys(RELATIONS_CACHE).forEach(k => RELATIONS_CACHE[k].forEach(l => {
+    if (parent[l.id] === undefined) parent[l.id] = l.id;
+    union(Number(k), l.id);
+  }));
   // Map e non oggetto: con chiavi numeriche Object.values rimetterebbe i gruppi in ordine di id, perdendo l'ordinamento scelto
   const groups = new Map();
   items.forEach(it => { const r = find(it.id); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(it); });
   return [...groups.values()];
+}
+
+// posizione di ogni stagione nella catena: numero di prequel a monte (anche fuori lista)
+function seasonDepth(id, seen = new Set()){
+  if (seen.has(id)) return 0;
+  seen.add(id);
+  let d = 0;
+  for (const l of (RELATIONS_CACHE[id] || [])){
+    if (l.t === 'PREQUEL') d = Math.max(d, 1 + seasonDepth(l.id, seen));
+    else if (l.t === 'PARENT' || l.t === 'SIDE_STORY') d = Math.max(d, 0);
+  }
+  return d;
+}
+function sortSeasons(group){
+  return group.slice().sort((a, b) => seasonDepth(a.id) - seasonDepth(b.id)
+    || (a.year || 9999) - (b.year || 9999) || a._i - b._i);
 }
 
 const EXPANDED_GROUPS = new Set();
@@ -3554,9 +3588,10 @@ function toggleGroup(key){
 // che si apre mostrando tutte le stagioni (cardFn genera l'html di una singola card)
 function renderGrouped(items, cardFn){
   if (VIEW.groupSeasons === false) return items.map(cardFn).join('');
-  return franchiseGroups(items).map(group => {
+  return items.map(group => {
+    if (!Array.isArray(group)) return cardFn(group);
     if (group.length === 1) return cardFn(group[0]);
-    const sorted = group.slice().sort((a, b) => (a.year || 9999) - (b.year || 9999) || a._i - b._i);
+    const sorted = sortSeasons(group);
     const key = String(Math.min(...group.map(it => it.id)));
     const open = EXPANDED_GROUPS.has(key);
     return `
@@ -3648,9 +3683,11 @@ function renderListBody(tab){
   }
   const v = listView(tab);
   const size = listPageSize();   // oltre questa soglia una lista si legge male: si spezza in pagine
-  const pages = Math.max(1, Math.ceil(items.length / size));
+  // si raggruppa PRIMA di impaginare, così una cartella non viene spezzata tra due pagine
+  const units = VIEW.groupSeasons === false ? items : franchiseGroups(items).map(g => g.length === 1 ? g[0] : g);
+  const pages = Math.max(1, Math.ceil(units.length / size));
   const page = Math.min(v.page || 0, pages - 1);
-  const pageItems = items.slice(page * size, (page + 1) * size);
+  const pageItems = units.slice(page * size, (page + 1) * size);
   const grid = tab === 'library' ? renderLibrary(pageItems)
     : tab === 'planning' ? renderPlanning(pageItems)
     : tab === 'paused' ? renderSimpleList(pageItems, { resumable:true })
