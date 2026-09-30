@@ -196,6 +196,18 @@ try{
 </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="dashboard.js"></script>
+<!-- Script classici caricati in ordine: condividono lo stesso ambito globale, quindi l'ordine conta (core per primo, main per ultimo) -->
+<script src="js/core.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/library.js"></script>
+<script src="js/upcoming-stats.js"></script>
+<script src="js/search.js"></script>
+<script src="js/links.js"></script>
+<script src="js/detail.js"></script>
+<script src="js/recs-news.js"></script>
+<script src="js/lists.js"></script>
+<script src="js/friends.js"></script>
+<script src="js/seasonal.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
