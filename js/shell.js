@@ -101,7 +101,11 @@ const TAB_LABELS = { library:'In corso', planning:'Da vedere', upcoming:'In usci
 const MANGA_TABS = ['library', 'planning', 'recs', 'friends', 'stats', 'paused', 'dropped', 'completed'];
 const TAB_LABELS_MANGA = { library:'In lettura', planning:'Da leggere', completed:'Letti', dropped:'Abbandonati' };
 const tabLabel = t => (isManga() && TAB_LABELS_MANGA[t]) || TAB_LABELS[t] || t;
-const DEFAULT_TAB_ORDER = $$('#tabs button[data-tab]').map(b => b.dataset.tab);   // ordine scritto nell'HTML
+// Ordine di default = quello della barra laterale desktop (le regole CSS `order` di dashboard.css seguono lo stesso elenco).
+// Su mobile, finché l'ordine non viene personalizzato, la barra fissa ha le 4 schede dell'HTML (DEFAULT_PRIMARY).
+const DEFAULT_PRIMARY = ['library', 'planning', 'recs', 'stats'];
+const DEFAULT_TAB_ORDER = Object.keys(TAB_LABELS).concat(
+  $$('#tabs button[data-tab]').map(b => b.dataset.tab).filter(t => !(t in TAB_LABELS)));
 // ordine scelto dall'utente; le schede non presenti nell'elenco salvato (nuove) vanno in coda
 const allTabs = () => {
   const saved = (VIEW.tabOrder || []).filter(t => DEFAULT_TAB_ORDER.includes(t));
@@ -117,13 +121,19 @@ function applyTabPrefs(){
   const vis = visibleTabs();
   // le prime 4 visibili stanno nella barra fissa (mobile), le altre sotto "Altro"; su desktop l'ordine è lo stesso
   const primary = $('#tabs .tabs-primary'), more = $('#tabsMore');
-  allTabs().slice().sort((a, b) => (vis.includes(b) ? 1 : 0) - (vis.includes(a) ? 1 : 0)).forEach((t, i) => {
+  const custom = VIEW.tabOrder.length > 0;
+  let bar = vis.slice(0, 4);
+  if (!custom){   // nessun ordine scelto: barra fissa storica (se ne manca una, si completa con le prime visibili)
+    bar = DEFAULT_PRIMARY.filter(t => vis.includes(t));
+    vis.forEach(t => { if (bar.length < 4 && !bar.includes(t)) bar.push(t); });
+  }
+  const shown = bar.concat(allTabs().filter(t => !bar.includes(t)));   // allTabs() è già nell'ordine scelto
+  shown.forEach(t => {
     const b = $(`#tabs button[data-tab="${t}"]`);
-    if (!b) return;
-    (vis.indexOf(t) >= 0 && vis.indexOf(t) < 4 ? primary : more).appendChild(b);   // allTabs() è già nell'ordine scelto
+    if (b) (bar.includes(t) ? primary : more).appendChild(b);
   });
   // la barra laterale desktop ordina con regole CSS `order` fisse: con un ordine scelto le scavalca inline
-  const custom = VIEW.tabOrder.length > 0, pos = allTabs();
+  const pos = allTabs();
   $$('#tabs button[data-tab]').forEach(b => {
     b.style.order = custom ? pos.indexOf(b.dataset.tab) + 1 : '';
     b.style.display = vis.includes(b.dataset.tab) ? '' : 'none';
@@ -176,6 +186,7 @@ function fillTabList(){
   const list = modeTabs();
   $('#setTabList').innerHTML = list.map((t, i) =>
     `<div class="tab-toggle-row">
+      <span class="tab-pos" aria-hidden="true">${i + 1}</span>
       <label class="tab-toggle"><input type="checkbox" data-tab="${t}" ${VIEW.hiddenTabs.includes(t) ? '' : 'checked'}><span>${escapeHtml(tabLabel(t))}</span></label>
       <button type="button" class="tab-move" data-move="-1" data-tab="${t}" aria-label="Sposta ${escapeHtml(tabLabel(t))} prima" ${i === 0 ? 'disabled' : ''}>▲</button>
       <button type="button" class="tab-move" data-move="1" data-tab="${t}" aria-label="Sposta ${escapeHtml(tabLabel(t))} dopo" ${i === list.length - 1 ? 'disabled' : ''}>▼</button>

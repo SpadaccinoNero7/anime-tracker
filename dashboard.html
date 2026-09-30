@@ -22,7 +22,7 @@ try{
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css">
+<link rel="stylesheet" href="dashboard.css?v=20260930c">
 </head>
 <body>
 <div class="app">
@@ -151,7 +151,7 @@ try{
         <label for="setStartTab">Scheda iniziale<small>Quella che si apre appena entri.</small></label>
         <select id="setStartTab"></select>
       </div>
-      <p class="hint">Togli la spunta alle schede che non usi: spariscono dalla barra. Con le frecce ▲▼ scegli l'ordine (su mobile le prime 4 restano sempre in vista, le altre sono sotto «Altro»).</p>
+      <p class="hint">Togli la spunta alle schede che non usi: spariscono dalla barra. Con le frecce ▲▼ scegli l'ordine (è quello della barra). Su mobile, una volta cambiato l'ordine, le prime 4 restano sempre in vista e le altre sono sotto «Altro».</p>
       <div class="tab-toggles" id="setTabList"></div>
     </details>
 
@@ -197,17 +197,17 @@ try{
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- Script classici caricati in ordine: condividono lo stesso ambito globale, quindi l'ordine conta (core per primo, main per ultimo) -->
-<script src="js/core.js"></script>
-<script src="js/shell.js"></script>
-<script src="js/library.js"></script>
-<script src="js/upcoming-stats.js"></script>
-<script src="js/search.js"></script>
-<script src="js/links.js"></script>
-<script src="js/detail.js"></script>
-<script src="js/recs-news.js"></script>
-<script src="js/lists.js"></script>
-<script src="js/friends.js"></script>
-<script src="js/seasonal.js"></script>
-<script src="js/main.js"></script>
+<script src="js/core.js?v=20260930c"></script>
+<script src="js/shell.js?v=20260930c"></script>
+<script src="js/library.js?v=20260930c"></script>
+<script src="js/upcoming-stats.js?v=20260930c"></script>
+<script src="js/search.js?v=20260930c"></script>
+<script src="js/links.js?v=20260930c"></script>
+<script src="js/detail.js?v=20260930c"></script>
+<script src="js/recs-news.js?v=20260930c"></script>
+<script src="js/lists.js?v=20260930c"></script>
+<script src="js/friends.js?v=20260930c"></script>
+<script src="js/seasonal.js?v=20260930c"></script>
+<script src="js/main.js?v=20260930c"></script>
 </body>
 </html>

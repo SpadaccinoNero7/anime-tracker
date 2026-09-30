@@ -599,6 +599,7 @@
   .tab-toggles{flex-direction:column;flex-wrap:nowrap;gap:6px;}
   .tab-toggle-row{display:flex;align-items:center;gap:6px;}
   .tab-toggle-row .tab-toggle{flex:1;}
+  .tab-pos{width:20px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted);}
   .tab-move{
     width:32px;height:30px;border:1px solid var(--border);border-radius:8px;background:none;
     color:var(--muted);font-size:11px;cursor:pointer;
