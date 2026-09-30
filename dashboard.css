@@ -596,6 +596,15 @@
     display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;
     padding:5px 12px 5px 8px;font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none;
   }
+  .tab-toggles{flex-direction:column;flex-wrap:nowrap;gap:6px;}
+  .tab-toggle-row{display:flex;align-items:center;gap:6px;}
+  .tab-toggle-row .tab-toggle{flex:1;}
+  .tab-move{
+    width:32px;height:30px;border:1px solid var(--border);border-radius:8px;background:none;
+    color:var(--muted);font-size:11px;cursor:pointer;
+  }
+  .tab-move:hover:not(:disabled){color:var(--text);border-color:var(--border-strong);}
+  .tab-move:disabled{opacity:.3;cursor:default;}
   .tab-toggle input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0;}
   .tab-toggle:has(input:checked){color:var(--text);border-color:var(--border-strong);}
   .set-group summary{

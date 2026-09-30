@@ -119,10 +119,11 @@ if (TG) try { TG.onEvent('themeChanged', () => { if (THEME_PREF === 'auto') appl
 // ---------- Preferenze di visualizzazione (rotellina) ----------
 // Aspetto e schede: restano su questo browser (localStorage), non passano dal server.
 const VIEW_KEY = 'animeDashboardView';
-const VIEW_DEFAULTS = { titleLang:'english', groupSeasons:true, pageSize:30, startTab:'library', hiddenTabs:[], volumeChapters:true, showYen:true };
+const VIEW_DEFAULTS = { titleLang:'english', groupSeasons:true, pageSize:30, startTab:'library', hiddenTabs:[], tabOrder:[], volumeChapters:true, showYen:true };
 let VIEW = Object.assign({}, VIEW_DEFAULTS);
 try { Object.assign(VIEW, JSON.parse(localStorage.getItem(VIEW_KEY)) || {}); } catch (e) {}
 if (!Array.isArray(VIEW.hiddenTabs)) VIEW.hiddenTabs = [];
+if (!Array.isArray(VIEW.tabOrder)) VIEW.tabOrder = [];
 function saveView(){ try { localStorage.setItem(VIEW_KEY, JSON.stringify(VIEW)); } catch (e) {} }
 
 // ---------- Modalità: anime oppure manga ----------
@@ -228,7 +229,12 @@ const TAB_LABELS = { library:'In corso', planning:'Da vedere', upcoming:'In usci
 const MANGA_TABS = ['library', 'planning', 'recs', 'friends', 'stats', 'paused', 'dropped', 'completed'];
 const TAB_LABELS_MANGA = { library:'In lettura', planning:'Da leggere', completed:'Letti', dropped:'Abbandonati' };
 const tabLabel = t => (isManga() && TAB_LABELS_MANGA[t]) || TAB_LABELS[t] || t;
-const allTabs = () => $$('#tabs button[data-tab]').map(b => b.dataset.tab);
+const DEFAULT_TAB_ORDER = $$('#tabs button[data-tab]').map(b => b.dataset.tab);   // ordine scritto nell'HTML
+// ordine scelto dall'utente; le schede non presenti nell'elenco salvato (nuove) vanno in coda
+const allTabs = () => {
+  const saved = (VIEW.tabOrder || []).filter(t => DEFAULT_TAB_ORDER.includes(t));
+  return saved.concat(DEFAULT_TAB_ORDER.filter(t => !saved.includes(t)));
+};
 const modeTabs = () => allTabs().filter(t => !isManga() || MANGA_TABS.includes(t));
 function visibleTabs(){
   const vis = modeTabs().filter(t => !VIEW.hiddenTabs.includes(t));
@@ -237,7 +243,17 @@ function visibleTabs(){
 function startTab(){ const vis = visibleTabs(); return vis.includes(VIEW.startTab) ? VIEW.startTab : vis[0]; }
 function applyTabPrefs(){
   const vis = visibleTabs();
+  // le prime 4 visibili stanno nella barra fissa (mobile), le altre sotto "Altro"; su desktop l'ordine è lo stesso
+  const primary = $('#tabs .tabs-primary'), more = $('#tabsMore');
+  allTabs().slice().sort((a, b) => (vis.includes(b) ? 1 : 0) - (vis.includes(a) ? 1 : 0)).forEach((t, i) => {
+    const b = $(`#tabs button[data-tab="${t}"]`);
+    if (!b) return;
+    (vis.indexOf(t) >= 0 && vis.indexOf(t) < 4 ? primary : more).appendChild(b);   // allTabs() è già nell'ordine scelto
+  });
+  // la barra laterale desktop ordina con regole CSS `order` fisse: con un ordine scelto le scavalca inline
+  const custom = VIEW.tabOrder.length > 0, pos = allTabs();
   $$('#tabs button[data-tab]').forEach(b => {
+    b.style.order = custom ? pos.indexOf(b.dataset.tab) + 1 : '';
     b.style.display = vis.includes(b.dataset.tab) ? '' : 'none';
     b.textContent = tabLabel(b.dataset.tab);
   });
@@ -284,6 +300,15 @@ function fillStartTab(){
   $('#setStartTab').innerHTML = vis.map(t =>
     `<option value="${t}" ${t === cur ? 'selected' : ''}>${escapeHtml(tabLabel(t))}</option>`).join('');
 }
+function fillTabList(){
+  const list = modeTabs();
+  $('#setTabList').innerHTML = list.map((t, i) =>
+    `<div class="tab-toggle-row">
+      <label class="tab-toggle"><input type="checkbox" data-tab="${t}" ${VIEW.hiddenTabs.includes(t) ? '' : 'checked'}><span>${escapeHtml(tabLabel(t))}</span></label>
+      <button type="button" class="tab-move" data-move="-1" data-tab="${t}" aria-label="Sposta ${escapeHtml(tabLabel(t))} prima" ${i === 0 ? 'disabled' : ''}>▲</button>
+      <button type="button" class="tab-move" data-move="1" data-tab="${t}" aria-label="Sposta ${escapeHtml(tabLabel(t))} dopo" ${i === list.length - 1 ? 'disabled' : ''}>▼</button>
+    </div>`).join('');
+}
 function fillSettings(){
   $('#setTheme').value = THEME_PREF;
   $('#setTitleLang').value = VIEW.titleLang;
@@ -292,8 +317,7 @@ function fillSettings(){
   $('#setShowYen').checked = VIEW.showYen !== false;
   $('#setPageSize').value = String(VIEW.pageSize);
   fillStartTab();
-  $('#setTabList').innerHTML = modeTabs().map(t =>
-    `<label class="tab-toggle"><input type="checkbox" data-tab="${t}" ${VIEW.hiddenTabs.includes(t) ? '' : 'checked'}><span>${escapeHtml(tabLabel(t))}</span></label>`).join('');
+  fillTabList();
   $('#cfgBaseUrl').value = CONFIG.baseUrl;
   $('#cfgHeaderName').value = CONFIG.headerName || 'X-Api-Key';
   $('#cfgApiKey').value = CONFIG.apiKey;
@@ -319,6 +343,23 @@ $('#setVolumeChapters').addEventListener('change', e => { VIEW.volumeChapters = 
 $('#setShowYen').addEventListener('change', e => { VIEW.showYen = e.target.checked; saveView(); if (ACTIVE_TAB === 'news') renderTab(); });
 $('#setPageSize').addEventListener('change', e => { VIEW.pageSize = Number(e.target.value) || 0; saveView(); rerenderForPrefs(); });
 $('#setStartTab').addEventListener('change', e => { VIEW.startTab = e.target.value; saveView(); });
+$('#setTabList').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-move]');
+  if (!btn) return;
+  const order = allTabs(), tab = btn.dataset.tab;
+  // si scambia con la vicina tra quelle della modalità corrente (in manga alcune schede non ci sono)
+  const shown = modeTabs(), j = shown.indexOf(tab) + Number(btn.dataset.move);
+  if (j < 0 || j >= shown.length) return;
+  const a = order.indexOf(tab), b = order.indexOf(shown[j]);
+  order[a] = shown[j]; order[b] = tab;
+  VIEW.tabOrder = order;
+  saveView();
+  applyTabPrefs();
+  fillTabList();
+  fillStartTab();
+  const again = $(`#setTabList button[data-tab="${tab}"][data-move="${btn.dataset.move}"]`);
+  (again && !again.disabled ? again : $(`#setTabList button[data-tab="${tab}"]:not([disabled])`))?.focus();
+});
 $('#setTabList').addEventListener('change', e => {
   const cb = e.target.closest('input[data-tab]');
   if (!cb) return;
@@ -338,7 +379,7 @@ $('#setTabList').addEventListener('change', e => {
   fillStartTab();                      // la scheda iniziale non può essere una nascosta
 });
 $('#setReset').addEventListener('click', () => {
-  VIEW = Object.assign({}, VIEW_DEFAULTS, { hiddenTabs: [] });
+  VIEW = Object.assign({}, VIEW_DEFAULTS, { hiddenTabs: [], tabOrder: [] });
   saveView();
   setTheme('auto');
   applyTabPrefs();
