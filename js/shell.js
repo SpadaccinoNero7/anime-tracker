@@ -243,6 +243,56 @@ $('#setTabList').addEventListener('click', e => {
   const again = $(`#setTabList button[data-tab="${tab}"][data-move="${btn.dataset.move}"]`);
   (again && !again.disabled ? again : $(`#setTabList button[data-tab="${tab}"]:not([disabled])`))?.focus();
 });
+// Trascinamento delle schede nella barra laterale (solo desktop, dove la barra è verticale; su mobile restano le frecce).
+// Sposta `tab` prima o dopo `target`: le schede non valide per la modalità (manga) restano dove sono.
+function reorderTabs(tab, target, after){
+  const before = modeTabs(), shown = before.filter(t => t !== tab);
+  const i = shown.indexOf(target);
+  if (tab === target || i < 0 || !before.includes(tab)) return;
+  shown.splice(after ? i + 1 : i, 0, tab);
+  let k = 0;
+  VIEW.tabOrder = allTabs().map(t => before.includes(t) ? shown[k++] : t);
+  saveView();
+  applyTabPrefs();
+  fillTabList();
+  fillStartTab();
+}
+const TAB_DRAG_MQ = matchMedia('(min-width:880px)');
+function syncTabDrag(){ $$('#tabs button[data-tab]').forEach(b => { b.draggable = TAB_DRAG_MQ.matches; }); }
+syncTabDrag();
+try { TAB_DRAG_MQ.addEventListener('change', syncTabDrag); } catch (e) {}
+(function(){
+  const nav = $('#tabs');
+  let dragging = null;
+  const clear = () => $$('#tabs .tab-drop-before, #tabs .tab-drop-after, #tabs .tab-dragging')
+    .forEach(b => b.classList.remove('tab-drop-before', 'tab-drop-after', 'tab-dragging'));
+  const tabBtn = e => e.target.closest && e.target.closest('button[data-tab]');
+  nav.addEventListener('dragstart', e => {
+    const b = tabBtn(e);
+    if (!b || !TAB_DRAG_MQ.matches) return;
+    dragging = b.dataset.tab;
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', dragging); } catch (err) {}   // Firefox non parte senza dati
+    b.classList.add('tab-dragging');
+  });
+  nav.addEventListener('dragover', e => {
+    const b = tabBtn(e);
+    if (!dragging || !b || b.dataset.tab === dragging) return;
+    e.preventDefault();
+    const r = b.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2;
+    $$('#tabs .tab-drop-before, #tabs .tab-drop-after').forEach(x => x.classList.remove('tab-drop-before', 'tab-drop-after'));
+    b.classList.add(after ? 'tab-drop-after' : 'tab-drop-before');
+  });
+  nav.addEventListener('drop', e => {
+    const b = tabBtn(e);
+    if (!dragging || !b) return;
+    e.preventDefault();
+    const r = b.getBoundingClientRect(), tab = dragging;
+    clear(); dragging = null;
+    reorderTabs(tab, b.dataset.tab, e.clientY > r.top + r.height / 2);
+  });
+  nav.addEventListener('dragend', () => { clear(); dragging = null; });
+})();
 $('#setTabList').addEventListener('change', e => {
   const cb = e.target.closest('input[data-tab]');
   if (!cb) return;
